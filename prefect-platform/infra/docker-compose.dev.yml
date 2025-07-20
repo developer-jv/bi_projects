@@ -1,0 +1,100 @@
+version: "3.9"
+x-env: &prefect-env
+  PREFECT_API_URL: http://prefect-server:4200/api
+
+services:
+#────────────────────────── Infra básica ──────────────────────────#
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: prefect
+      POSTGRES_PASSWORD: prefect
+      POSTGRES_DB: prefect
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prefect"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    volumes: [redis_data:/data]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+#────────────────────────── Prefect Server ────────────────────────#
+  prefect-server:
+    image: prefecthq/prefect:3-latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://prefect:prefect@postgres:5432/prefect
+      PREFECT_SERVER_API_HOST: 0.0.0.0
+      #PREFECT_SERVER_UI_API_URL: /api
+      PREFECT_API_URL: /api
+      PREFECT_MESSAGING_BROKER: prefect_redis.messaging
+      PREFECT_MESSAGING_CACHE: prefect_redis.messaging
+      PREFECT_REDIS_MESSAGING_HOST: redis
+      PREFECT_REDIS_MESSAGING_PORT: 6379
+      PREFECT_REDIS_MESSAGING_DB: 0
+    command: prefect server start --no-services --host 0.0.0.0 --port 4200
+    ports:
+      - "4200:4200"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c ''import requests; exit(0) if requests.get("http://localhost:4200/api/health").ok else exit(1)'' || exit 1',
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  prefect-services:
+    image: prefecthq/prefect:3-latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://prefect:prefect@postgres:5432/prefect
+      PREFECT_MESSAGING_BROKER: prefect_redis.messaging
+      PREFECT_MESSAGING_CACHE: prefect_redis.messaging
+      PREFECT_REDIS_MESSAGING_HOST: redis
+      PREFECT_REDIS_MESSAGING_PORT: 6379
+      PREFECT_REDIS_MESSAGING_DB: 0
+    command: prefect server services start
+
+  #────────────────────────── Worker de desarrollo ──────────────────#
+  prefect-worker:
+    image: prefecthq/prefect:3-latest
+    command: prefect worker start --pool dev-pool # pool “process” para dev
+    environment: *prefect-env
+    depends_on:
+      prefect-server: { condition: service_healthy }
+    volumes:
+      - ../flows:/flows # 🡅 bind-mount del código fuente
+      - /var/run/docker.sock:/var/run/docker.sock # si luego usas pools tipo docker
+    restart: unless-stopped
+
+  #────────── Contenedor CLI opcional (build deployments/tests) ─────#
+  dev-cli:
+    image: prefecthq/prefect:3-latest
+    entrypoint: bash
+    working_dir: /workspace
+    environment: *prefect-env
+    volumes:
+      - ../:/workspace # repo completo
+      - ../flows:/flows # acceso directo a flujos
+
+volumes:
+  postgres_data:
+  redis_data:
