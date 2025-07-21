@@ -1,9 +1,9 @@
-version: "3.9"
+#version: "3.9"
 x-env: &prefect-env
   PREFECT_API_URL: http://prefect-server:4200/api
 
 services:
-#────────────────────────── Infra básica ──────────────────────────#
+  #────────────────────────── Infra básica ──────────────────────────#
   postgres:
     image: postgres:14
     environment:
@@ -25,7 +25,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-#────────────────────────── Prefect Server ────────────────────────#
+  #────────────────────────── Prefect Server ────────────────────────#
   prefect-server:
     image: prefecthq/prefect:3-latest
     depends_on:
@@ -86,14 +86,17 @@ services:
     restart: unless-stopped
 
   #────────── Contenedor CLI opcional (build deployments/tests) ─────#
-  dev-cli:
-    image: prefecthq/prefect:3-latest
-    entrypoint: bash
-    working_dir: /workspace
-    environment: *prefect-env
-    volumes:
-      - ../:/workspace # repo completo
-      - ../flows:/flows # acceso directo a flujos
+  #dev-cli:
+    #image: prefecthq/prefect:3-latest
+    #entrypoint: bash
+    #working_dir: /workspace
+    #environment: *prefect-env
+    #volumes:
+    #  - ../:/workspace # repo completo
+    #  - ../flows:/flows # acceso directo a flujos
+    #tty: true                # ← mantiene TTY
+    #stdin_open: true         # ← mantiene STDIN abierto
+    #command: ["sleep","infinity"]
 
 volumes:
   postgres_data:
