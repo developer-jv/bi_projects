@@ -1,0 +1,21 @@
+{
+  "name": "mysql-cdc-erp",
+  "config": {
+    "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+    "topic.prefix": "erp",
+    "database.hostname": "mysql-cdc",
+    "database.port": "3306",
+    "database.user": "debezium",
+    "database.password": "dbz_pw_123",
+    "database.server.id": "184054",
+    "database.include.list": "erp",
+    "table.include.list": "erp.customers,erp.orders",
+    "snapshot.mode": "initial",
+    "tombstones.on.delete": "false",
+    "include.schema.changes": "false",
+    "decimal.handling.mode": "double",
+    "time.precision.mode": "connect",
+    "schema.history.internal.kafka.bootstrap.servers": "broker:9092",
+    "schema.history.internal.kafka.topic": "schema-changes.erp"
+  }
+}

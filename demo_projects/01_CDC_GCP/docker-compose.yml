@@ -1,0 +1,173 @@
+version: "3.9"
+
+networks:
+  pipeline-net:
+    name: pipeline-net
+
+services:
+  # === MySQL listo para CDC ===
+  mysql:
+    build:
+      context: ./local-db/mysql
+    container_name: mysql-cdc
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: erp
+      MYSQL_USER: ${MYSQL_APP_USER}
+      MYSQL_PASSWORD: ${MYSQL_APP_PASSWORD}
+      TZ: UTC
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bash",
+          "-lc",
+          "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+    networks: [pipeline-net]
+
+  # === ZooKeeper (solo para entorno local sencillo) ===
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: zk
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks: [pipeline-net]
+
+  # === Kafka Broker ===
+  broker:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: broker
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092" # interno (otros contenedores)
+      - "9094:9094" # acceso desde tu host
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:9092,PLAINTEXT_HOST://localhost:9094
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 24
+    networks: [pipeline-net]
+
+  # === Schema Registry (opcional, útil si usas Avro/Protobuf) ===
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.6.1
+    container_name: schema-registry
+    depends_on:
+      - broker
+    environment:
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "broker:9092"
+      SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8081"
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+    ports:
+      - "8081:8081"
+    networks: [pipeline-net]
+
+  # === Kafka Connect con Debezium 3.2 ===
+  connect:
+    image: confluentinc/cp-kafka-connect:7.9.0
+    container_name: connect
+    depends_on:
+      - broker
+      - schema-registry
+    ports:
+      - "8083:8083"
+    environment:
+      # REST / listeners
+      CONNECT_REST_ADVERTISED_HOST_NAME: connect
+      CONNECT_REST_ADVERTISED_PORT: 8083
+      CONNECT_LISTENERS: http://0.0.0.0:8083
+
+      # Kafka bootstrap (preflight + runtime)
+      KAFKA_BOOTSTRAP_SERVERS: broker:9092
+      CONNECT_BOOTSTRAP_SERVERS: broker:9092
+
+      # Tópicos internos
+      CONNECT_GROUP_ID: connect-cluster
+      CONNECT_CONFIG_STORAGE_TOPIC: connect-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: connect-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: connect-status
+
+      # Avro + Schema Registry
+      CONNECT_KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
+      CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+
+      # Plugins (donde montamos Debezium)
+      CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
+
+      CONNECT_LOG4J_ROOT_LOGLEVEL: INFO
+    volumes:
+      # Monta el plugin Debezium MySQL (3.2.x) ya extraído en tu host
+      - ./connectors/plugins/debezium-connector-mysql:/usr/share/confluent-hub-components/debezium-connector-mysql
+    networks: [pipeline-net]
+
+  # === UI para ver tópicos y conectores ===
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    depends_on:
+      - broker
+      - schema-registry
+      - connect
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: connect
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://connect:8083
+    networks: [pipeline-net]
+
+  # === Spark Streaming -> Iceberg (local) ===
+  spark:
+    build:
+      context: ./PySpark
+    container_name: spark-iceberg
+    depends_on:
+      - broker
+      - schema-registry
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: broker:9092
+      SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      ICEBERG_WAREHOUSE: file:/opt/tables_apache_iceberg/warehouse
+      ICEBERG_CATALOG: lh
+      ICEBERG_DB: erp
+      ICEBERG_TABLE: orders_iceberg
+      CHECKPOINT_DIR: file:/opt/checkpoints/orders_iceberg
+      KAFKA_TOPIC: erp_avro.erp.orders
+    volumes:
+      - ./PySpark/app:/opt/app
+      - ./tables_apache_iceberg:/opt/tables_apache_iceberg
+      - ./checkpoints:/opt/checkpoints
+    networks: [pipeline-net]
+    command: >
+      bash -lc "/opt/bitnami/spark/bin/spark-submit --master local[*] --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1,org.apache.spark:spark-avro_2.12:3.5.1,org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.0 /opt/app/main.py"
+
+
+volumes:
+  mysql_data:
+  connect_plugins:
+  kafka_data:

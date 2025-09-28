@@ -1,0 +1,34 @@
+-- Crear base de datos y usuario de aplicación (varía según vars de entorno)
+CREATE DATABASE IF NOT EXISTS erp CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+
+
+-- Tablas de ejemplo
+USE erp;
+
+
+CREATE TABLE IF NOT EXISTS customers (
+customer_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+customer_code VARCHAR(50) NOT NULL UNIQUE,
+full_name VARCHAR(200) NOT NULL,
+email VARCHAR(254) NOT NULL UNIQUE,
+is_active TINYINT(1) NOT NULL DEFAULT 1,
+created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+
+CREATE TABLE IF NOT EXISTS orders (
+order_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+customer_id BIGINT NOT NULL,
+order_ts DATETIME(3) NOT NULL,
+status ENUM('CREATED','PAID','SHIPPED','CANCELLED') NOT NULL DEFAULT 'CREATED',
+amount DECIMAL(12,2) NOT NULL,
+currency CHAR(3) NOT NULL DEFAULT 'USD',
+created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+CONSTRAINT fk_orders_customer FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+) ENGINE=InnoDB;
+
+
+CREATE INDEX ix_orders_customer ON orders(customer_id);
+CREATE INDEX ix_orders_status_ts ON orders(status, order_ts);

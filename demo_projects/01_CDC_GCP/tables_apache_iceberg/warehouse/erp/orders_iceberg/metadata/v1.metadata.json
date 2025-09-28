@@ -1,0 +1,66 @@
+{
+  "format-version" : 2,
+  "table-uuid" : "908a75ed-fecc-4813-9f83-ecda1e67faf6",
+  "location" : "file:/opt/tables_apache_iceberg/warehouse/erp/orders_iceberg",
+  "last-sequence-number" : 0,
+  "last-updated-ms" : 1759023923497,
+  "last-column-id" : 5,
+  "current-schema-id" : 0,
+  "schemas" : [ {
+    "type" : "struct",
+    "schema-id" : 0,
+    "fields" : [ {
+      "id" : 1,
+      "name" : "order_id",
+      "required" : false,
+      "type" : "long"
+    }, {
+      "id" : 2,
+      "name" : "customer_id",
+      "required" : false,
+      "type" : "long"
+    }, {
+      "id" : 3,
+      "name" : "amount",
+      "required" : false,
+      "type" : "decimal(12, 2)"
+    }, {
+      "id" : 4,
+      "name" : "status",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 5,
+      "name" : "ts",
+      "required" : false,
+      "type" : "timestamptz"
+    } ]
+  } ],
+  "default-spec-id" : 0,
+  "partition-specs" : [ {
+    "spec-id" : 0,
+    "fields" : [ {
+      "name" : "ts_day",
+      "transform" : "day",
+      "source-id" : 5,
+      "field-id" : 1000
+    } ]
+  } ],
+  "last-partition-id" : 1000,
+  "default-sort-order-id" : 0,
+  "sort-orders" : [ {
+    "order-id" : 0,
+    "fields" : [ ]
+  } ],
+  "properties" : {
+    "owner" : "spark",
+    "write.parquet.compression-codec" : "zstd"
+  },
+  "current-snapshot-id" : -1,
+  "refs" : { },
+  "snapshots" : [ ],
+  "statistics" : [ ],
+  "partition-statistics" : [ ],
+  "snapshot-log" : [ ],
+  "metadata-log" : [ ]
+}
