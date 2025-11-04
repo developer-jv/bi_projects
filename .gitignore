@@ -1,7 +1,8 @@
 */venv/*
 __pycache__
-demo_projects/01_CDC_GCP/.env
 ./.venv
 **/logs/*
-**/.env*
-
+**/.env
+**/checkpoints/*
+**/orders_iceberg/*
+**/tables_apache_iceberg/*

@@ -1,8 +1,12 @@
 {
   "name": "mysql-cdc-erp-avro",
+  "initial_state": "RUNNING",
   "config": {
     "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+    "tasks.max": "1",
+
     "topic.prefix": "erp_avro",
+
     "database.hostname": "mysql-cdc",
     "database.port": "3306",
     "database.user": "debezium",
@@ -10,20 +14,48 @@
     "database.server.id": "184055",
     "database.include.list": "erp",
     "table.include.list": "erp.customers,erp.orders",
-    "snapshot.mode": "initial",
+
+    "snapshot.mode": "when_needed",
     "snapshot.locking.mode": "minimal",
+
+    "incremental.snapshot.enabled": "true",
+    "incremental.snapshot.allow.schema.changes": "true",
+
+    "signal.enabled.channels": "kafka",
+    "signal.kafka.topic": "erp_avro.signals",
+    "signal.kafka.bootstrap.servers": "broker:9092",
+
     "tombstones.on.delete": "false",
     "include.schema.changes": "false",
     "decimal.handling.mode": "double",
     "time.precision.mode": "connect",
+
     "schema.history.internal.kafka.bootstrap.servers": "broker:9092",
-    "schema.history.internal.kafka.topic": "schema-changes.erp_avro",
+    "schema.history.internal.kafka.topic": "schema-changes.erp_avro.v2",
+
     "errors.tolerance": "all",
     "errors.deadletterqueue.topic.name": "dlq.mysql-cdc-erp-avro",
     "errors.deadletterqueue.context.headers.enable": "true",
     "errors.retry.timeout": "60000",
     "errors.retry.delay.max.ms": "10000",
+
     "heartbeat.interval.ms": "10000",
-    "heartbeat.topics.prefix": "__debezium-heartbeat"
+    "heartbeat.topics.prefix": "__debezium-heartbeat",
+
+    "topic.creation.default.replication.factor": "1",
+    "topic.creation.default.partitions": "1",
+    "topic.creation.default.cleanup.policy": "delete",
+    "topic.creation.default.retention.ms": "604800000",
+
+    "topic.creation.compacted.include": "__debezium-heartbeat.erp_avro,schema-changes.erp_avro.v2",
+    "topic.creation.compacted.replication.factor": "1",
+    "topic.creation.compacted.partitions": "1",
+    "topic.creation.compacted.cleanup.policy": "compact",
+    "topic.creation.compacted.retention.ms": "-1",
+
+    "topic.creation.signals.include": "erp_avro.signals",
+    "topic.creation.signals.replication.factor": "1",
+    "topic.creation.signals.partitions": "1",
+    "topic.creation.signals.cleanup.policy": "delete"
   }
 }

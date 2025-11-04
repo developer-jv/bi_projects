@@ -57,6 +57,10 @@
 
 La documentación detallada — guías paso a paso, ejemplos y buenas prácticas — vive en la **[Wiki del proyecto](../../wiki)**. ¡Te invito a consultarla y, si lo deseas, a complementar su contenido!
 
+<div align="center">
+  <img src="Arquitectura Pipeline de datos.drawio.png" alt="Arquitectura de Datos" width="100%"/>
+</div>
+
 ## 🤝 Contribuir
 
 1. Haz **fork** del repositorio.

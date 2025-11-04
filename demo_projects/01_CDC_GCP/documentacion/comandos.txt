@@ -1,0 +1,68 @@
+export CONNECT_URL="http://localhost:8083"
+export CONNECTOR="mysql-cdc-erp-avro"
+export CONF_FILE="mysql-cdc-erp-avro.config.json"   # SOLO objeto config
+export WRAP_FILE="mysql-cdc-erp-avro.json"          # wrapper: {name, initial_state, config}
+
+
+# Ver plugins disponibles (clases)
+curl -s "$CONNECT_URL/connector-plugins" | jq '.[].class'
+
+# Validar tu config (¡envía SOLO el objeto "config"!)
+curl -s -X PUT -H "Content-Type: application/json" \
+  --data @"$CONF_FILE" \
+  "$CONNECT_URL/connector-plugins/io.debezium.connector.mysql.MySqlConnector/config/validate" | jq
+
+#Crear el conector (wrapper)
+curl -s -X POST -H "Content-Type: application/json" \
+  --data @"$WRAP_FILE" \
+  "$CONNECT_URL/connectors" | jq
+
+# Estado completo (conector + tareas)
+curl -s "$CONNECT_URL/connectors/$CONNECTOR/status" | jq
+
+# Solo resumen del estado + trazas de tareas fallidas
+curl -s "$CONNECT_URL/connectors/$CONNECTOR/status" | jq '{connector: .connector.state, tasks: [.tasks[] | {id, state, trace}] }'
+
+# Ver config efectiva que está corriendo
+curl -s "$CONNECT_URL/connectors/$CONNECTOR/config" | jq -S .
+
+# Comparar tu archivo vs. lo que corre (requiere bash)
+diff <(curl -s "$CONNECT_URL/connectors/$CONNECTOR/config" | jq -S .) <(jq -S . "$CONF_FILE") || true
+
+# Pausar
+curl -s -X PUT "$CONNECT_URL/connectors/$CONNECTOR/pause"
+
+# Reanudar
+curl -s -X PUT "$CONNECT_URL/connectors/$CONNECTOR/resume"
+
+# Reiniciar conector (y tareas)
+curl -s -X POST "$CONNECT_URL/connectors/$CONNECTOR/restart?includeTasks=true&onlyFailed=false"
+
+# Reiniciar solo una tarea (ej. task 0)
+curl -s -X POST "$CONNECT_URL/connectors/$CONNECTOR/tasks/0/restart"
+
+# (Opcional) pausar
+curl -s -X PUT "$CONNECT_URL/connectors/$CONNECTOR/pause"
+
+# Subir nueva config (SOLO objeto "config")
+curl -s -X PUT -H "Content-Type: application/json" \
+  --data @"$CONF_FILE" \
+  "$CONNECT_URL/connectors/$CONNECTOR/config" | jq
+
+# (Opcional) reiniciar tareas
+curl -s -X POST "$CONNECT_URL/connectors/$CONNECTOR/restart?includeTasks=true&onlyFailed=false"
+
+# (Opcional) reanudar
+curl -s -X PUT "$CONNECT_URL/connectors/$CONNECTOR/resume"
+
+#Borrar
+curl -s -X DELETE "$CONNECT_URL/connectors/$CONNECTOR" | jq
+
+
+# Ver loggers
+curl -s "$CONNECT_URL/admin/loggers" | jq
+
+# Subir a DEBUG para Debezium
+curl -s -X PUT -H "Content-Type: application/json" \
+  --data '{"level":"DEBUG"}' \
+  "$CONNECT_URL/admin/loggers/io.debezium" | jq

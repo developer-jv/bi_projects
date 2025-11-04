@@ -8,7 +8,13 @@ services:
       - SPARK_MODE=master
     ports:
       - "7077:7077"
-      - "8080:8080"
+      - "8080-8090:8080"
+    volumes:
+      - ./warehouse:/opt/warehouse
+      - ../demo_projects/01_CDC_GCP/tables_apache_iceberg:/opt/tables_apache_iceberg
+      - ../demo_projects/01_CDC_GCP/checkpoints:/opt/checkpoints
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks: [spark-net]
 
   spark-worker-1:
@@ -20,7 +26,13 @@ services:
       - SPARK_WORKER_MEMORY=12G
       - SPARK_WORKER_CORES=6
     ports:
-      - "8081:8081"
+      - "8080-8090:8081"
+    volumes:
+      - ./warehouse:/opt/warehouse
+      - ../demo_projects/01_CDC_GCP/tables_apache_iceberg:/opt/tables_apache_iceberg
+      - ../demo_projects/01_CDC_GCP/checkpoints:/opt/checkpoints
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks: [spark-net]
     depends_on: [spark-master]
 
@@ -31,12 +43,23 @@ services:
     environment:
       - SPARK_MODE=driver
       - SPARK_MASTER=spark://spark-master:7077
+      - ICEBERG_WAREHOUSE=/opt/warehouse
     command: >
       /opt/bitnami/spark/sbin/start-connect-server.sh
       --master spark://spark-master:7077
-      --packages org.apache.spark:spark-connect_2.13:4.0.0
+      --packages "org.apache.spark:spark-connect_2.13:4.0.0,org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.0,org.apache.spark:spark-avro_2.13:4.0.0,org.apache.iceberg:iceberg-spark-runtime-4.0_2.13:1.10.0"
+      --conf spark.sql.catalog.lh=org.apache.iceberg.spark.SparkCatalog
+      --conf spark.sql.catalog.lh.type=hadoop
+      --conf spark.sql.catalog.lh.warehouse=/opt/tables_apache_iceberg/warehouse
+
     ports:
       - "15002:15002"
+    volumes:
+      - ./warehouse:/opt/warehouse
+      - ../demo_projects/01_CDC_GCP/tables_apache_iceberg:/opt/tables_apache_iceberg
+      - ../demo_projects/01_CDC_GCP/checkpoints:/opt/checkpoints
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # en Linux habilita este hostname
     networks: [spark-net]
     depends_on: [spark-master, spark-worker-1]
 

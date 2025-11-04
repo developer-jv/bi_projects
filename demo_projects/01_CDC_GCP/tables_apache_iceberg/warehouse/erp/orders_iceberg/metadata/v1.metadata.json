@@ -1,9 +1,9 @@
 {
   "format-version" : 2,
-  "table-uuid" : "908a75ed-fecc-4813-9f83-ecda1e67faf6",
+  "table-uuid" : "ca689f6a-51ee-40db-b1c3-a990d0a61f2f",
   "location" : "file:/opt/tables_apache_iceberg/warehouse/erp/orders_iceberg",
   "last-sequence-number" : 0,
-  "last-updated-ms" : 1759023923497,
+  "last-updated-ms" : 1759040256577,
   "last-column-id" : 5,
   "current-schema-id" : 0,
   "schemas" : [ {
