@@ -1,0 +1,32 @@
+services:
+  oracle-xe:
+    image: gvenzl/oracle-xe:21-slim
+    container_name: oracle-xe
+    environment:
+      ORACLE_PASSWORD: "StrongPassw0rd!"
+      APP_USER: "demo"
+      APP_USER_PASSWORD: "demo1234"
+      ORACLE_CHARACTERSET: "AL32UTF8"
+      ORACLE_ALLOW_REMOTE: "true"
+    ports:
+      - "1521:1521"
+      - "5500:5500"
+    volumes:
+      - oradata:/opt/oracle/oradata # ← named volume
+    networks: [spark-net]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'echo ''SELECT 1 FROM dual;'' | sqlplus -s SYSTEM/"$${ORACLE_PASSWORD}"@localhost:1521/XEPDB1 || exit 1',
+        ]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+
+networks:
+  spark-net: {} # Compose la crea automáticamente
+
+volumes:
+  oradata: {} # define el named volume

@@ -1,0 +1,84 @@
+x-spark-image: &spark_image spark:4.0.1-scala2.13-java21-python3-ubuntu
+
+services:
+  spark-master:
+    image: *spark_image
+    container_name: spark-master
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+      - SPARK_HOME=/opt/spark
+      - SPARK_MASTER_HOST=spark-master
+    command:
+      - /opt/spark/sbin/start-master.sh
+      - --host
+      - spark-master
+      - --port
+      - "7077"
+      - --webui-port
+      - "8080"
+    ports:
+      - "7077:7077" # RPC del cluster
+      - "8080:8080" # Web UI del master
+    volumes:
+      - ./jobs:/opt/jobs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks: [spark-net]
+
+  # ★ Worker "genérico" que se puede escalar
+  spark-worker:
+    image: *spark_image
+    # SIN container_name → permite escalar
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+      - SPARK_HOME=/opt/spark
+    command:
+      - /opt/spark/sbin/start-worker.sh
+      - --cores
+      - "6"
+      - --memory
+      - "12G"
+      - spark://spark-master:7077
+    # OJO: sin mapeo de puertos fijos (8081:8081) para evitar conflictos al escalar
+    volumes:
+      - ./jobs:/opt/jobs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks: [spark-net]
+    depends_on: [spark-master]
+
+  # ★ Servidor Spark Connect
+  spark-connect:
+    image: *spark_image
+    container_name: spark-connect
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+      - SPARK_HOME=/opt/spark
+      - ICEBERG_WAREHOUSE=/opt/warehouse
+    command:
+      - /bin/sh
+      - -c
+      - >
+        mkdir -p /tmp/.ivy2/cache /tmp/.ivy2/jars &&
+        /opt/spark/sbin/start-connect-server.sh
+        --master spark://spark-master:7077
+        --packages org.apache.spark:spark-connect_2.13:4.0.1,org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.1,org.apache.spark:spark-avro_2.13:4.0.1,org.apache.iceberg:iceberg-spark-runtime-4.0_2.13:1.10.0,com.oracle.database.jdbc:ojdbc11:23.4.0.24.05
+        --conf spark.jars.ivy=/tmp/.ivy2
+        --conf spark.sql.catalog.lh=org.apache.iceberg.spark.SparkCatalog
+        --conf spark.sql.catalog.lh.type=hadoop
+        --conf spark.sql.catalog.lh.warehouse=/opt/tables_apache_iceberg/warehouse
+    ports:
+      - "15002:15002" # Spark Connect gRPC
+      - "4040:4040" # UI de la app que ejecute Connect
+    volumes:
+      - ./jobs:/opt/jobs
+      # opcional: cache persistente de jars
+      # - ./ivy_cache:/tmp/.ivy2
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks: [spark-net]
+    depends_on: [spark-master, spark-worker]
+
+networks:
+  spark-net:
+    driver: bridge

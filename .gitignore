@@ -6,3 +6,7 @@ __pycache__
 **/checkpoints/*
 **/orders_iceberg/*
 **/tables_apache_iceberg/*
+processing/PySpark_Base/jobs/_out/connect_smoke_test/.part-00000-a90ed4d1-74b1-43f0-8951-80807ad94ca8-c000.json.crc
+processing/PySpark_Base/jobs/_out/connect_smoke_test/part-00000-a90ed4d1-74b1-43f0-8951-80807ad94ca8-c000.json
+processing/PySpark_Base/jobs/_out/connect_smoke_test/_SUCCESS
+processing/PySpark_Base/jobs/_out/connect_smoke_test/._SUCCESS.crc

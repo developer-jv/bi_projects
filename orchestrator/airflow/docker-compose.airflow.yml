@@ -1,5 +1,5 @@
 x-airflow-common: &airflow-common
-  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.0.3}
+  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.1.1}
   env_file:
     - .env # Carga AIRFLOW_UID
   environment: &airflow-common-env
@@ -8,9 +8,10 @@ x-airflow-common: &airflow-common
     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
     AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
-    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS:
-      "admin:admin" # crea 1 usuario admin
-      # 👇 NUEVO: acceso correcto al API-server desde todos los contenedoress
+    # --- USUARIOS Y ACCESOS ---
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:admin,bi:user,analyst:viewer"
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: "/opt/airflow/auth/simple_auth_passwords.json"
+    # acceso correcto al API-server desde todos los contenedoress
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: "http://airflow-api-server:8080/execution/"
     # --- claves compartidas ---
     AIRFLOW__API_AUTH__JWT_SECRET: "${JWT_SECRET}"
@@ -19,11 +20,14 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__FERNET_KEY: "${FERNET_KEY}" # variable de entorno, ubicadas en .env
     # (opcional) expón la raíz por si más adelante cambias prefijo o puerto
     AIRFLOW__API__BASE_URL: "http://airflow-api-server:8080"
+    AIRFLOW__API__EXPOSE_CONFIG: "True" # solo para dev si quieres ver la config en la UI
+
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
     - ./config:/opt/airflow/config
+    - ./auth:/opt/airflow/auth
   user: "${AIRFLOW_UID}:0"
   depends_on:
     postgres:
@@ -57,9 +61,12 @@ services:
     ports:
       - "8083:8080" # host:contenedor
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
       interval: 10s
       retries: 5
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
 
     # ⬇️  Servicio adicional en 3.x
   airflow-dag-processor:
