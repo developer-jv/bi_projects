@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  spark-master:
+    image: bitnami/spark:4.0.0
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+    networks: [spark-net]
+
+  spark-worker-1:
+    image: bitnami/spark:4.0.0
+    container_name: spark-worker-1
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=12G
+      - SPARK_WORKER_CORES=6
+    ports:
+      - "8081:8081"
+    networks: [spark-net]
+    depends_on: [spark-master]
+
+  # ★ Servidor Spark Connect ★
+  spark-connect:
+    image: bitnami/spark:4.0.0
+    container_name: spark-connect
+    environment:
+      - SPARK_MODE=driver            
+      - SPARK_MASTER=spark://spark-master:7077
+    command: >
+      /opt/bitnami/spark/sbin/start-connect-server.sh
+      --master spark://spark-master:7077
+      --packages org.apache.spark:spark-connect_2.13:4.0.0
+    ports:
+      - "15002:15002"
+    networks: [spark-net]
+    depends_on: [spark-master, spark-worker-1]
+
+networks:
+  spark-net:
+    driver: bridge

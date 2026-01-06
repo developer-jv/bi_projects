@@ -55,6 +55,11 @@ services:
     image: redis:7-alpine
     networks: [airflow-net]
 
+  airflow-init:
+    <<: *airflow-common
+    command: airflow db migrate
+    #profiles: ["init"]
+
   airflow-api-server:
     <<: *airflow-common
     command: api-server
@@ -84,11 +89,6 @@ services:
   airflow-triggerer:
     <<: *airflow-common
     command: triggerer
-
-  airflow-init:
-    <<: *airflow-common
-    command: airflow db migrate
-    profiles: ["init"]
 
   airflow-cli:
     <<: *airflow-common
