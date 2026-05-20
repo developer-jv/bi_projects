@@ -73,7 +73,7 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
-    # ⬇️  Servicio adicional en 3.x
+    # ⬇  Servicio adicional en 3.x
   airflow-dag-processor:
     <<: *airflow-common
     command: dag-processor
