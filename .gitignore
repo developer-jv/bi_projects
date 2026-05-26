@@ -10,3 +10,8 @@ processing/PySpark_Base/jobs/_out/connect_smoke_test/.part-00000-a90ed4d1-74b1-4
 processing/PySpark_Base/jobs/_out/connect_smoke_test/part-00000-a90ed4d1-74b1-43f0-8951-80807ad94ca8-c000.json
 processing/PySpark_Base/jobs/_out/connect_smoke_test/_SUCCESS
 processing/PySpark_Base/jobs/_out/connect_smoke_test/._SUCCESS.crc
+**/.env.aws
+**/.terraform/*
+**/*.tfstate
+**/*.tfstate.*
+**/.pytest_cache/*

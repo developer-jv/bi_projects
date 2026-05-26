@@ -1,0 +1,7 @@
+aws_region            = "us-east-1"
+aws_access_key_id     = "REEMPLAZAR_ACCESS_KEY"
+aws_secret_access_key = "REEMPLAZAR_SECRET_KEY"
+glue_crawler_role_arn = "arn:aws:iam::696586750741:role/REEMPLAZAR_GLUE_CRAWLER_ROLE"
+bucket_name           = "lakehouse-demo-reemplazar"
+project_name          = "lakehouse-medallion"
+environment           = "dev"

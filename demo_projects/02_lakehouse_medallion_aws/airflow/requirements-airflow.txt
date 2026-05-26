@@ -1,0 +1,10 @@
+apache-airflow-providers-apache-spark==5.4.2
+apache-airflow-providers-amazon==9.15.0
+apache-airflow-providers-standard==1.9.0
+psycopg2-binary
+pandas>=2.2.0,<3
+protobuf>=5.28,<6
+grpcio>=1.67.0
+grpcio-status>=1.67.0
+googleapis-common-protos>=1.70.0
+pyspark==4.0.0

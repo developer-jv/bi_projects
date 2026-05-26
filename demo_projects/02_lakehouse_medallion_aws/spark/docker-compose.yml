@@ -1,0 +1,89 @@
+services:
+  spark-master:
+    image: apache/spark:4.0.0
+    container_name: spark-master
+    env_file:
+      - ../.env
+    environment:
+      HOME: /tmp
+    command:
+      - /opt/spark/bin/spark-class
+      - org.apache.spark.deploy.master.Master
+      - --host
+      - spark-master
+      - --port
+      - "7077"
+      - --webui-port
+      - "8080"
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+    volumes:
+      - ./warehouse:/opt/spark/work-dir/warehouse
+    networks: [spark-net]
+
+  spark-worker-1:
+    image: apache/spark:4.0.0
+    container_name: spark-worker-1
+    env_file:
+      - ../.env
+    environment:
+      HOME: /tmp
+    command:
+      - /opt/spark/bin/spark-class
+      - org.apache.spark.deploy.worker.Worker
+      - spark://spark-master:7077
+      - --webui-port
+      - "8081"
+      - --memory
+      - 12G
+      - --cores
+      - "6"
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./warehouse:/opt/spark/work-dir/warehouse
+    networks: [spark-net]
+    depends_on: [spark-master]
+
+  spark-connect:
+    image: apache/spark:4.0.0
+    container_name: spark-connect
+    env_file:
+      - ../.env
+    environment:
+      HOME: /tmp
+    command:
+      - /bin/bash
+      - -lc
+      - >
+        /opt/spark/sbin/start-connect-server.sh
+        --master spark://spark-master:7077
+        --packages org.apache.hadoop:hadoop-aws:3.4.1,org.apache.iceberg:iceberg-spark-runtime-4.0_2.13:1.10.0,org.apache.iceberg:iceberg-aws-bundle:1.10.0
+        --conf spark.connect.grpc.binding.address=0.0.0.0
+        --conf spark.connect.grpc.binding.port=15002
+        --conf spark.jars.ivy=/tmp/.ivy2
+        --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
+        --conf spark.sql.defaultCatalog=lakehouse
+        --conf spark.sql.catalog.lakehouse=org.apache.iceberg.spark.SparkCatalog
+        --conf spark.sql.catalog.lakehouse.type=glue
+        --conf spark.sql.catalog.lakehouse.warehouse=$${LAKEHOUSE_WAREHOUSE}
+        --conf spark.sql.catalog.lakehouse.io-impl=org.apache.iceberg.aws.s3.S3FileIO
+        --conf spark.hadoop.fs.s3a.access.key=$${AWS_ACCESS_KEY_ID}
+        --conf spark.hadoop.fs.s3a.secret.key=$${AWS_SECRET_ACCESS_KEY}
+        --conf spark.hadoop.fs.s3a.endpoint=s3.$${AWS_DEFAULT_REGION}.amazonaws.com
+        --conf spark.hadoop.fs.s3a.path.style.access=false
+        --conf spark.executorEnv.AWS_ACCESS_KEY_ID=$${AWS_ACCESS_KEY_ID}
+        --conf spark.executorEnv.AWS_SECRET_ACCESS_KEY=$${AWS_SECRET_ACCESS_KEY}
+        --conf spark.executorEnv.AWS_DEFAULT_REGION=$${AWS_DEFAULT_REGION}
+        && tail -f /opt/spark/logs/*connect*.out
+    ports:
+      - "15002:15002"
+    volumes:
+      - ./warehouse:/opt/spark/work-dir/warehouse
+    networks: [spark-net]
+    depends_on: [spark-master, spark-worker-1]
+
+networks:
+  spark-net:
+    driver: bridge
