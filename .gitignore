@@ -15,3 +15,5 @@ processing/PySpark_Base/jobs/_out/connect_smoke_test/._SUCCESS.crc
 **/*.tfstate
 **/*.tfstate.*
 **/.pytest_cache/*
+**/terraform.tfvars
+**/tfplan

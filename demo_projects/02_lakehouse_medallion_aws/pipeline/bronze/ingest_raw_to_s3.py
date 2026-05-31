@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from pipeline.common.aws import build_boto3_session
 from pipeline.common.config import build_run_context, load_settings
 from pipeline.common.sample_data import build_sample_payloads
 
 
-def ingest_all_sources() -> dict:
+def ingest_all_sources(
+    process_date: str | None = None,
+    logical_date: datetime | None = None,
+) -> dict:
     settings = load_settings()
-    run_context = build_run_context()
+    run_context = build_run_context(process_date=process_date, logical_date=logical_date)
     session = build_boto3_session()
     s3 = session.client("s3")
     payloads = build_sample_payloads()
@@ -25,5 +30,7 @@ def ingest_all_sources() -> dict:
     return {
         "batch_id": run_context.batch_id,
         "ingestion_date": run_context.ingestion_date,
+        "logical_date": run_context.logical_date,
+        "started_at": run_context.started_at,
         "files": written,
     }

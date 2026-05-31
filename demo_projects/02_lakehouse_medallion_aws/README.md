@@ -7,6 +7,10 @@ Proyecto base para construir un lakehouse medallion sobre AWS con:
 - Apache Iceberg sobre S3
 - Glue Data Catalog y Athena
 
+## Diagrama del proyecto
+
+![Diagrama del proyecto Lakehouse Medallion AWS](./Proyecto%20medallion%20portfolio.drawio.png)
+
 ## Estructura
 - `airflow/`: copia versionable del stack de Airflow del proyecto
 - `spark/`: stack local de Spark Connect para desarrollo

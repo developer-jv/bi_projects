@@ -16,14 +16,14 @@ def build_silver_layer(run_context: dict) -> dict:
     base = f"s3a://{settings.lakehouse_bucket}/bronze"
 
     customers = (
-        spark.read.option("multiline", True).json(f"{base}/customers/ingestion_date={run_context[ingestion_date]}/*.json")
+        spark.read.option("multiline", True).json(f"{base}/customers/ingestion_date={run_context['ingestion_date']}/*.json")
         .withColumn("email_masked", _mask(F.col("email")))
         .withColumn("phone_masked", _mask(F.col("phone")))
         .dropDuplicates(["customer_id"])
     )
-    products = spark.read.option("header", True).csv(f"{base}/products/ingestion_date={run_context[ingestion_date]}/*.csv")
-    orders = spark.read.option("header", True).csv(f"{base}/orders/ingestion_date={run_context[ingestion_date]}/*.csv")
-    order_items = spark.read.option("header", True).csv(f"{base}/order_items/ingestion_date={run_context[ingestion_date]}/*.csv")
+    products = spark.read.option("header", True).csv(f"{base}/products/ingestion_date={run_context['ingestion_date']}/*.csv")
+    orders = spark.read.option("header", True).csv(f"{base}/orders/ingestion_date={run_context['ingestion_date']}/*.csv")
+    order_items = spark.read.option("header", True).csv(f"{base}/order_items/ingestion_date={run_context['ingestion_date']}/*.csv")
 
     customers.writeTo("lakehouse.silver.customers").using("iceberg").createOrReplace()
     products.writeTo("lakehouse.silver.products").using("iceberg").createOrReplace()

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 
 @dataclass(frozen=True)
@@ -24,6 +24,7 @@ class RunContext:
     batch_id: str
     ingestion_date: str
     started_at: str
+    logical_date: str
 
 
 def load_settings() -> Settings:
@@ -41,10 +42,32 @@ def load_settings() -> Settings:
     )
 
 
-def build_run_context() -> RunContext:
-    now = datetime.now(timezone.utc)
+def _to_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def resolve_process_date(process_date: str | None = None, logical_date: datetime | None = None) -> str:
+    if process_date:
+        return date.fromisoformat(process_date).isoformat()
+
+    base_date = _to_utc(logical_date or datetime.now(timezone.utc))
+    return base_date.date().isoformat()
+
+
+def build_run_context(
+    process_date: str | None = None,
+    logical_date: datetime | None = None,
+    started_at: datetime | None = None,
+) -> RunContext:
+    resolved_logical_date = _to_utc(logical_date or datetime.now(timezone.utc))
+    resolved_started_at = _to_utc(started_at or datetime.now(timezone.utc))
+    resolved_process_date = resolve_process_date(process_date=process_date, logical_date=resolved_logical_date)
+
     return RunContext(
-        batch_id=now.strftime("batch_%Y%m%dT%H%M%SZ"),
-        ingestion_date=now.strftime("%Y-%m-%d"),
-        started_at=now.isoformat(),
+        batch_id=f"batch_{resolved_process_date.replace('-', '')}",
+        ingestion_date=resolved_process_date,
+        started_at=resolved_started_at.isoformat(),
+        logical_date=resolved_logical_date.isoformat(),
     )
